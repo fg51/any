@@ -8,7 +8,7 @@
 #define ENCODER_UP                  (0b010000)
 #define ENCODER_DOWN                (0b100000)
 
-static uint32_t event = NO_EVENT;
+static volatile uint32_t event = NO_EVENT;
 
 //{{{ prot-type enum
 typedef enum button_state_t button_state_t;
@@ -17,10 +17,13 @@ typedef enum button_state_t button_state_t;
 
 //{{{ static globals
 const uint32_t kBUTTON_DEBOUNCE_TICKS  =   10;
-const uint32_t kBUTTON_DOUBLE_TICKS    =  500;
+const uint32_t kBUTTON_RELEASED_TICKS  =  500;
 const uint32_t kBUTTON_DOWN_LONG_TICKS = 2000;
 
-static button_state_t button_state = state_pushed;
+static volatile button_state_t button_state = state_pushed;
+static uint32_t last_tick = 0;
+static bool is_single_pushed = false;
+static bool is_double_pushed = false;
 //}}} static globals
 
 
@@ -36,6 +39,9 @@ void init_button_state(void)
 {
     event = NO_EVENT;
     button_state = state_idle;
+    last_tick = 0;
+    is_single_pushed = false;
+    is_double_pushed = false;
 }
 
 
@@ -59,33 +65,32 @@ void update_button_state(const bool is_pushed, const uint32_t cur_tick)
 
 static void run_idle(const bool kIS_PUSHED, const uint32_t kCUR_TICK)
 {
-    button_state = (kIS_PUSHED) ? state_pushed: state_idle;
+    if (kIS_PUSHED) {
+        button_state = state_pushed;
+        last_tick = kCUR_TICK;
+    }
     return;
 }
 
-static bool is_double_pushed = false;
-static bool is_single_pushed = false;
 
 static void run_pushed(const bool kIS_PUSHED, const uint32_t kCUR_TICK)
 {
+    const bool is_debounced = kCUR_TICK < (kBUTTON_DEBOUNCE_TICKS + last_tick);
+    if (is_debounced) { return; }
+
     //NOTE: check long push
     if (kIS_PUSHED == true) {
-        if (kCUR_TICK >= kBUTTON_DOWN_LONG_TICKS) {
-            event = EVT_BUTTON_DOWN_LONG;
+        const bool is_long_pushed = kCUR_TICK >= kBUTTON_DOWN_LONG_TICKS + last_tick;
+        if (is_long_pushed) {
             button_state = state_pushed_long;
+            event = EVT_BUTTON_DOWN_LONG;
             return;
         }
+        is_single_pushed = true;
         return;
     }
 
-    //NOTE: check debounce
-    if (kCUR_TICK >= kBUTTON_DEBOUNCE_TICKS) {
-        if (is_single_pushed) {
-            is_double_pushed = true;
-        } else {
-            is_single_pushed = true;
-        }
-    }
+    //button_state = state_idle;
     button_state = state_released;
 
     return;
@@ -98,32 +103,36 @@ static void run_pushed_long(const bool kIS_PUSHED, const uint32_t kCUR_TICK)
         button_state = state_released;
         return;
     }
-
     return;
 }
 
 
 static void run_released(const bool kIS_PUSHED, const uint32_t kCUR_TICK)
 {
-    if (kIS_PUSHED) {
-        if (kCUR_TICK >= kBUTTON_DOUBLE_TICKS) {
-        }
-    }
+    const bool kIS_RELEASED = kCUR_TICK >= kBUTTON_RELEASED_TICKS + last_tick;
+    if (kIS_RELEASED == false) { return; }
 
+    if (kIS_PUSHED) {
+        is_single_pushed = true;
+        button_state = state_pushed;
+    }
     if (is_double_pushed) {
-        is_double_pushed = false;
         event = EVT_BUTTON_DOUBLE_CLICK;
-        button_state = state_idle;
-        return;
     }
     if (is_single_pushed) {
-        is_single_pushed = false;
         event = EVT_BUTTON_SINGLE_CLICK;
-        button_state = state_idle;
-        return;
     }
-    event = NO_EVENT;
+
     button_state = state_idle;
+    is_single_pushed = false;
+    is_double_pushed = false;
     return;
 }
 
+static void run_exit(const bool kIS_PUSHED, const uint32_t kCUR_TICK)
+{
+    button_state = state_idle;
+    is_single_pushed = false;
+    is_double_pushed = false;
+    return;
+}
