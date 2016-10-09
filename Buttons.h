@@ -1,26 +1,9 @@
-#ifndef D_Buttons_H
-#define D_Buttons_H
-
-/**********************************************************
- *
- * Buttons is responsible for ...
- *
- **********************************************************/
+#ifndef D_BUTTONS_H
+#define D_BUTTONS_H
 
 #include <stdint.h>
+#include "Buttons_event.h"
 
-enum button_state_t {
-    state_idle,
-    state_pushed,
-    state_pushed_long,
-    state_released,
-    state_exit,
-};
+event_t update_button_encoder(uint32_t tick);
 
-
-void init_button_state(void);
-enum button_state_t get_button_state(void);
-
-void update_button_state(bool is_pushed, uint32_t cur_tick);
-
-#endif  /* D_FakeButtons_H */
+#endif
