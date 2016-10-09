@@ -14,6 +14,7 @@ enum button_state_t {
     state_pushed,
     state_pushed_long,
     state_released,
+    state_exit,
 };
 
 
