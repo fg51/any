@@ -10,6 +10,7 @@ typedef int32_t q31_t;
 #define CAPTUREBUFFER_SIZEHALF (0) // address
 #define DECIMATION_RATIO (0)
 
+/*  0x800(2048) = 0x10000 / 2 / 16 */
 #define FIR_BUFFER_SIZE		0x800
 #define FIR_STATE_SIZE		0x40
 #define FIR_GAINBITS		5	/* 0 ~ 6 */
@@ -134,11 +135,23 @@ void DMA_IRQHandler (void)
     fir_filter_iq();
     TESTPOINT_SPIKE();
 
-    #if 1
-    demod_distribute();
-    TESTPOINT_SPIKE();
-    resample_fir_filter_amdemod();
-    #endif
+	fm_demod();
+	TESTPOINT_SPIKE();
+#if STEREO
+	stereo_separate();
+	//TESTPOINT_SPIKE();
+	//stereo_matrix();
+	TESTPOINT_SPIKE();
+	resample_fir_filter_stereo();
+#else
+	resample_fir_filter();
+#endif
+
+    //#if 1
+    //demod_distribute();
+    //TESTPOINT_SPIKE();
+    //resample_fir_filter_amdemod();
+    //#endif
 
     TESTPOINT_OFF();
     capture_count ++;
@@ -279,79 +292,15 @@ static void fir_filter_iq(void)
 }
 
 
-//__RAMFUNC(RAM)
-static void demod_distribute(void)
-{
-    const int32_t kLENGTH = DEMOD_BUFFER_SIZE / sizeof(uint32_t);
-
-    const uint32_t *const src = (uint32_t *)DEMOD_BUFFER;
-    int16_t *dest1 = (int16_t *)RESAMPLE_BUFFER;
-    int16_t *dest2 = (int16_t *)RESAMPLE2_BUFFER;
-
-    for (int i = 0; i < kLENGTH; i++) {
-        uint32_t x0 = src[i];
-        dest1[i] = x0 & 0xffff;
-        dest2[i] = (x0 >> 16) & 0xffff;
-    }
-}
-
 
 #include "fir_coeff.h"
 
+
+struct {
+	uint32_t last;
+	int32_t carrier;
+} fm_demod_state;
+
+
+
 //__RAMFUNC(RAM)
-void resample_fir_filter_amdemod()
-{
-    const uint16_t *src1 = (const uint16_t *)RESAMPLE_STATE;
-    const uint16_t *src2 = (const uint16_t *)RESAMPLE2_STATE;
-    const int32_t kTAIL = RESAMPLE_BUFFER_SIZE;
-    int32_t idx = resample_state.index;
-
-    int cur = audio_state.write_current;
-    uint16_t *dest = (uint16_t *)AUDIO_BUFFER;
-
-    while (idx < kTAIL) {
-        const uint32_t *coeff = (uint32_t*)resample_fir_coeff[idx % 2];
-        int32_t acc1 = 0;
-        int32_t acc2 = 0;
-        const uint32_t *s1 = (const uint32_t*)&src1[idx >> 1];
-        const uint32_t *s2 = (const uint32_t*)&src2[idx >> 1];
-        for (int j = 0; j < RESAMPLE_NUM_TAPS / 2; j++) {
-            uint32_t x1 = *s1++;
-            uint32_t x2 = *s2++;
-            //uint32_t l = __SADD16(x1, x2);
-            //uint32_t r = __SSUB16(x1, x2);
-            acc1 = __SMLAD(x1, *coeff, acc1);
-            acc2 = __SMLAD(x2, *coeff, acc2);
-            coeff++;
-        }
-        acc1 = __SSAT(acc1 >> 14, 16);
-        acc2 = __SSAT(acc2 >> 14, 16);
-        q31_t ampl;
-        arm_sqrt_q31(acc1 * acc1 + acc2 * acc2, &ampl);
-        dest[cur++] = __SSAT(ampl >> (16 - RESAMPLE_GAINBITS), 16);
-        cur %= AUDIO_BUFFER_SIZE / 2;
-        audio_state.write_total += 2;
-        idx += 13;  //NOTE: 2 / 13 decimation: 2 samples per loop
-    }
-
-    audio_state.write_current = cur;
-    resample_state.index = idx - kTAIL;
-
-    uint32_t *state1 = (uint32_t *)RESAMPLE_STATE;
-    src1 = &src1[kTAIL / sizeof(*src1)];
-    for (int i = 0; i < RESAMPLE_STATE_SIZE / sizeof(uint32_t); i++) {
-        //*state++ = *src1++;
-        __asm__ volatile ("ldr r0, [%0], #+4\n" : : "r" (src1) : "r0");
-        __asm__ volatile ("str r0, [%0], #+4\n" : : "r" (state1) : "r0");
-    }
-
-    uint32_t *state2 = (uint32_t *)RESAMPLE2_STATE;
-    src2 = &src2[kTAIL / sizeof(*src2)];
-    for (int i = 0; i < RESAMPLE_STATE_SIZE / sizeof(uint32_t); i++) {
-        //*state++ = *src2++;
-        __asm__ volatile ("ldr r0, [%0], #+4\n" : : "r" (src2) : "r0");
-        __asm__ volatile ("str r0, [%0], #+4\n" : : "r" (state2) : "r0");
-    }
-}
-
-
