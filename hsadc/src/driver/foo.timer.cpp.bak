@@ -1,0 +1,68 @@
+#if 0
+#include "driver/timer.h"
+
+#include "driver/common_driver.h"
+
+/* Periodic sample rate in Hz */
+#define SAMPLE_RATE (5)
+
+void foo(void)
+{
+}
+
+namespace foobar {
+
+void bar(void) {}
+
+} // namespace foobar
+
+
+#if 0
+namespace drvTimer {
+
+/*
+ * Setup periodic timer to perform software triggering
+ */
+void foo(void)
+{
+#if 0
+    //NOTE: Enable timer 1 clock and reset it
+    Chip_TIMER_Init(LPC_TIMER1);
+    Chip_RGU_TriggerReset(RGU_TIMER1_RST);
+    while (Chip_RGU_InReset(RGU_TIMER1_RST));
+
+    /* Timer setup for match and interrupt at SAMPLE_RATE */
+    Chip_TIMER_Reset(LPC_TIMER1);
+    Chip_TIMER_MatchEnableInt(LPC_TIMER1, 1);
+    Chip_TIMER_SetMatch(LPC_TIMER1, 1, (Chip_Clock_GetRate(CLK_MX_TIMER1) / SAMPLE_RATE));
+    Chip_TIMER_ResetOnMatchEnable(LPC_TIMER1, 1);
+    Chip_TIMER_Enable(LPC_TIMER1);
+
+    /* Enable timer interrupt */
+    NVIC_EnableIRQ(TIMER1_IRQn);
+    NVIC_ClearPendingIRQ(TIMER1_IRQn);
+#endif
+}
+
+
+} // namespace drvTimer
+
+#if 0
+
+/**
+ * @brief	Handle interrupt from 32-bit timer
+ * @return	Nothing
+ */
+void TIMER1_IRQHandler(void)
+{
+    /* Clear timer interrupt */
+    Chip_TIMER_ClearMatch(LPC_TIMER1, 1);
+
+    /* Reset descriptor pointer to table 0, descriptor 0 and force SW trigger */
+    Chip_HSADC_SetActiveDescriptor(LPC_ADCHS, 0, 0);
+    Chip_HSADC_SWTrigger(LPC_ADCHS);
+}
+#endif
+
+#endif
+#endif
