@@ -11,7 +11,8 @@
 
 //{{{ dummy
 typedef float float32_t;
-float32_t arm_cos_32t();
+float32_t arm_cos_f32(int16_t phase);
+float32_t arm_sin_f32(int16_t phase);
 //}}} dummy
 
 
@@ -35,18 +36,16 @@ float32_t arm_cos_32t();
 //void nco_set_frequency(float32_t freq) __RAMFUNC(RAM)
 
 //__RAMFUNC(RAM)
-void nco_set_frequency(float32_t freq)
+void nco_set_frequency(const float32_t kFREQ)
 {
-    int16_t *costbl = NCO_SIN_TABLE;
-    int16_t *sintbl = NCO_COS_TABLE;
-    int f;
-    int i;
+    int16_t *const costbl = NCO_SIN_TABLE;
+    int16_t *const sintbl = NCO_COS_TABLE;
 
-    freq -= (int)(freq / ADC_RATE) * ADC_RATE;
-    f = (int)(freq / ADC_RATE * NCO_CYCLE);
-    for (i = 0; i < NCO_SAMPLES; i++) {
-        float32_t phase = 2*PI*f*(i+0.5)/NCO_CYCLE;
-        costbl[i] = (int16_t)(arm_cos_f32(phase) * NCO_AMPL);
-        sintbl[i] = (int16_t)(arm_sin_f32(phase) * NCO_AMPL);
+    const float32_t kFREQ1 = kFREQ - (int)(kFREQ / ADC_RATE) * ADC_RATE;
+    const int kF = (int)(kFREQ1 / ADC_RATE * NCO_CYCLE);
+    for (int i = 0; i < NCO_SAMPLES; i++) {
+        const float32_t kPHASE = 2 * PI * kF * (i + 0.5) / NCO_CYCLE;
+        costbl[i] = (int16_t)(arm_cos_f32(kPHASE) * NCO_AMPL);
+        sintbl[i] = (int16_t)(arm_sin_f32(kPHASE) * NCO_AMPL);
     }
 }

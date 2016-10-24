@@ -7,14 +7,10 @@
 #include <cr_section_macros.h>
 
 
-#if 0
 namespace drvHSADC {
-#endif
-/* Last saved ADC sample for each input */
-volatile uint32_t lastSample[6] = {};
-#if 0
-} // namespace drvHSADC
-#endif
+///* Last saved ADC sample for each input */
+//volatile uint32_t lastSample[6] = {};
+
 
 
 static const CHIP_CGU_CLKIN_T adcBaseClkSources[] = {
@@ -44,22 +40,15 @@ static void cal_best_rate(
 
 
 
-#if 0
-namespace drvHSADC {
-#endif
-
-#define USE_INTERRUPT_MODE
+//#define USE_INTERRUPT_MODE
 
 #define HSADC_CLOCK_RATE_HZ (80 * 1E+6)
 
 
-
 void setup_HSADC(void)
 {
-#if 1
     setupClock(HSADC_CLOCK_RATE_HZ);
     Chip_HSADC_Init(LPC_ADCHS); //NOTE: Initialize HSADC
-#endif
 
 #if 0
     //NOTE: Show the actual HSADC clock rate
@@ -67,7 +56,6 @@ void setup_HSADC(void)
     DEBUGOUT("HSADC sampling rate = %dKHz\r\n", freqHSADC / 1000);
 #endif
 
-#if 1
     /* Setup FIFO trip points for interrupt/DMA to 8 samples, no packing */
     Chip_HSADC_SetupFIFO(LPC_ADCHS, 8, false);
 
@@ -82,9 +70,7 @@ void setup_HSADC(void)
             , HSADC_CHANNEL_ID_EN_ADD
             , 0x90
             );
-#endif
 
-#if 1
     /* Select both positive and negative DC biasing for input 3 */
     //Chip_HSADC_SetACDCBias(LPC_ADCHS, 3, HSADC_CHANNEL_DCBIAS, HSADC_CHANNEL_DCBIAS);
     Chip_HSADC_SetACDCBias(
@@ -93,9 +79,7 @@ void setup_HSADC(void)
             , HSADC_CHANNEL_DCBIAS
             , HSADC_CHANNEL_NODCBIAS
             );
-#endif
 
-#if 1
     /* Set low A threshold to 10% and high A threshold to 90% */
     Chip_HSADC_SetThrLowValue(LPC_ADCHS, 0, ((HSADC_MAX_SAMPLEVAL * 1) / 10));
     Chip_HSADC_SetThrHighValue(LPC_ADCHS, 0, ((HSADC_MAX_SAMPLEVAL * 9) / 10));
@@ -103,21 +87,17 @@ void setup_HSADC(void)
     /* Set low B threshold to 40% and high B threshold to 60% */
     Chip_HSADC_SetThrLowValue(LPC_ADCHS, 1, ((HSADC_MAX_SAMPLEVAL * 4) / 10));
     Chip_HSADC_SetThrHighValue(LPC_ADCHS, 1, ((HSADC_MAX_SAMPLEVAL * 6) / 10));
-#endif
 
-#if 1
     /* Setup data format for 2's complement and update clock settings. This function
        should be called whenever a clock change is made to the HSADC */
     Chip_HSADC_SetPowerSpeed(LPC_ADCHS, true);
 
     /* Enable HSADC power */
     Chip_HSADC_EnablePower(LPC_ADCHS);
-#endif
 
    /* Setup HSADC table 0 descriptors */
    /* Descriptor entries are mapped as follows */
 
-#if 1
    /*
     * 0 : mapped to input 0,
     * branch to next descriptor after sample,
@@ -132,9 +112,6 @@ void setup_HSADC(void)
              | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
              )
             );
-#endif
-
-#if 1
     /*
      * 1 : mapped to input 0,
      * branch to next descriptor after sample,
@@ -145,9 +122,6 @@ void setup_HSADC(void)
               | HSADC_DESC_BRANCH_NEXT | HSADC_DESC_MATCH(1)
               | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
               ));
-#endif
-
-#if 1
 
     /*
      * 2-3 : mapped to input 1,
@@ -159,17 +133,12 @@ void setup_HSADC(void)
              | HSADC_DESC_BRANCH_NEXT | HSADC_DESC_MATCH(1)
              | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
              ));
-#endif
 
-#if 1
     Chip_HSADC_SetupDescEntry(LPC_ADCHS, 0, 3, 
             (HSADC_DESC_CH(1)
              | HSADC_DESC_BRANCH_NEXT | HSADC_DESC_MATCH(1)
              | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
              ));
-#endif
-
-#if 1
 
     /*
      * 4-5 : mapped to input 2,
@@ -186,9 +155,7 @@ void setup_HSADC(void)
              | HSADC_DESC_BRANCH_NEXT | HSADC_DESC_MATCH(1)
              | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
              ));
-#endif
 
-#if 1
     /* 6 : mapped to input 3,
      * branch to next descriptor after sample,
      * match time is 1 test against threshold A
@@ -199,9 +166,7 @@ void setup_HSADC(void)
              | HSADC_DESC_THRESH_A | HSADC_DESC_RESET_TIMER
              )
             );
-#endif
 
-#if 1
     /*
      * 7 : mapped to input 4, 
      * branch to next descriptor after sample,
@@ -214,7 +179,6 @@ void setup_HSADC(void)
             | HSADC_DESC_HALT | HSADC_DESC_INT | HSADC_DESC_POWERDOWN
             | HSADC_DESC_MATCH(1) | HSADC_DESC_THRESH_B | HSADC_DESC_RESET_TIMER
             ));
-#endif
 
 #if 1
     /*
@@ -244,7 +208,6 @@ void setup_HSADC(void)
           | HSADC_INT1_THCMP_UCROSS(5) /* Inputs 5 upward threshold crossing detect */
           )
         );
-
 #endif
 
 #if 1
@@ -253,15 +216,11 @@ void setup_HSADC(void)
 
     /* Update descriptor tables - needed after updating any descriptors */
     Chip_HSADC_UpdateDescTable(LPC_ADCHS, 0);
-
 #endif
 }
 
-#if 0
-} // namespace drvHSADC
-#endif
 
-
+namespace {
 
 /*
  * Clock setup function for generating approximate HSADC clock. Trim this
@@ -408,78 +367,8 @@ static void cal_best_rate(
     *outSavedMaxCGU = savedMaxCGU;
 }
 
-
-
-#if 1
-/**
- * @brief    Handle interrupt for HSADC peripheral
- * @return    Nothing
- * @note    The HSADC IRQ handler is called SPIFI_ADCHS_IRQHandler() on the
- * M0 cores. For the M4 core, it's called ADCHS_IRQHandler().
- */
-void ADCHS_IRQHandler(void)
-{
-    uint32_t sts, data, sample, ch;
-    static bool on;
-    //int prn_delay = 0;
-
-    /* Toggle LED on each sample interrupt */
-    on = !on;
-    Board_LED_Set(0, on);
-
-    /* Get threshold interrupt status on group 1 and toggle on any crossing */
-    sts = Chip_HSADC_GetIntStatus(LPC_ADCHS, 1) & Chip_HSADC_GetEnabledInts(LPC_ADCHS, 1);
-    if (sts & (HSADC_INT1_THCMP_DCROSS(0) | HSADC_INT1_THCMP_DCROSS(1) |
-               HSADC_INT1_THCMP_UCROSS(2) | HSADC_INT1_THCMP_UCROSS(3) |
-               HSADC_INT1_THCMP_DCROSS(4) | HSADC_INT1_THCMP_UCROSS(5))) {
-        Board_LED_Set(1, true);
-    }
-    else {
-        Board_LED_Set(1, false);
-    }
-
-    /* Clear threshold interrupts statuses */
-    Chip_HSADC_ClearIntStatus(LPC_ADCHS, 1, sts);
-
-    /* Pull data from FIFO */
-    data = Chip_HSADC_GetFIFO(LPC_ADCHS);
-    while (!(data & HSADC_FIFO_EMPTY)) {
-        /* Pull sample data and channel from FIFO data */
-        sample = HSADC_FIFO_SAMPLE(data);
-        ch = HSADC_FIFO_CHAN_ID(data);
-
-        /* We don't really have anythng to do with the data,
-           so just save it */
-        //drvHSADC::lastSample[ch] = sample;
-        lastSample[ch] = sample;
-
-        /* Next sample */
-        data = Chip_HSADC_GetFIFO(LPC_ADCHS);
-    }
-
-    /* Get ADC interrupt status on group 0 */
-    sts = Chip_HSADC_GetIntStatus(LPC_ADCHS, 0) & Chip_HSADC_GetEnabledInts(LPC_ADCHS, 0);
-
-    /* Set LED 2 (if it exists) on an error */
-#if 1
-    if (sts & (HSADC_INT0_FIFO_OVERFLOW | HSADC_INT0_DSCR_ERROR)) {
-        Board_LED_Set(2, true);
-    }
-    else {
-        Board_LED_Set(2, false);
-    }
-#else
-    Board_LED_Set(
-        2,
-        (sts & (HSADC_INT0_FIFO_OVERFLOW | HSADC_INT0_DSCR_ERROR))?
-            true : false
-        );
-#endif
-
-    /* Clear group 0 interrupt statuses */
-    Chip_HSADC_ClearIntStatus(LPC_ADCHS, 0, sts);
-}
-#endif
+} // namespace
+} // namespace drvHSADC
 
 
 
