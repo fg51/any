@@ -47,22 +47,6 @@ void foo(void)
 
 } // namespace drvTimer
 
-#if 0
-
-/**
- * @brief	Handle interrupt from 32-bit timer
- * @return	Nothing
- */
-void TIMER1_IRQHandler(void)
-{
-    /* Clear timer interrupt */
-    Chip_TIMER_ClearMatch(LPC_TIMER1, 1);
-
-    /* Reset descriptor pointer to table 0, descriptor 0 and force SW trigger */
-    Chip_HSADC_SetActiveDescriptor(LPC_ADCHS, 0, 0);
-    Chip_HSADC_SWTrigger(LPC_ADCHS);
-}
-#endif
 
 #endif
 #endif

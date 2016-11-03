@@ -1,0 +1,39 @@
+cc  = gcc
+cxx = g++
+
+cflags   = --std=c11
+cxxflags = --std=c++14
+
+Iinclude = -Iinclude
+
+src_dir = src
+obj_dir = obj
+out_dir = out
+
+pool link_pool
+    depth = 4
+
+rule cc
+  depfile = $out.d
+  command = $cc -MMD -MF $out.d $cflags $Iinclude -c $in -o $out
+
+rule cxx
+  depfile = $out.d
+  command = $cc -MMD -MF $out.d $cxxflags $Iinclude -c $in -o $out
+
+rule link
+  pool = link_pool
+  command = $cxx $ldflags $in -o $out
+
+#========================================
+# Builds
+#========================================
+build $obj_dir/main.o: cxx $src_dir/main.cpp
+build $obj_dir/irq.o: cc $src_dir/irq.c
+build $obj_dir/shared.o: cc $src_dir/shared.c
+
+build $out_dir/a.exe: link $obj_dir/main.o $obj_dir/irq.o $obj_dir/shared.o
+
+build all: phony $out_dir/a.exe
+
+default all

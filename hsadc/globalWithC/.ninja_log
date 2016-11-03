@@ -1,0 +1,5 @@
+# ninja log v5
+4	697	0	obj/irq.o	df893994aef987a
+50	795	0	obj/shared.o	94b4684684d9532c
+29	1910	0	obj/main.o	d2c01f9891c3ae04
+1910	3129	0	out/a.exe	9cfeb1a14741df47
